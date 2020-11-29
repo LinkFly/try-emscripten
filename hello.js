@@ -1592,8 +1592,8 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1114: function($0) {console.log('test-2 Value: ' + $0); var offset = Module._malloc(3); Module.HEAP8.set(new Uint8Array([1,2,3]), offset); Module._modify_array(offset, 3); var result = []; result[0] = Module.getValue(offset); result[1] = Module.getValue(offset + 1); result[2] = Module.getValue(offset + 2); console.log("modified array: ", result); Module._free(offset); var offset2 = Module._get_inmem(); for(let i = 0; i < 3; ++i) { let curval = Module.getValue(offset2 + i); Module.setValue(offset2 + i, curval + 21); } Module._print_inmem();},  
- 1646: function($0) {return $0 + 1;}
+  1130: function($0) {console.log('test-2 Value: ' + $0); var offset = Module._malloc(3); Module.HEAP8.set(new Uint8Array([1,2,3]), offset); Module._modify_array(offset, 3); var result = []; result[0] = Module.getValue(offset); result[1] = Module.getValue(offset + 1); result[2] = Module.getValue(offset + 2); console.log("modified array: ", result); Module._free(offset); var offset2 = Module._get_inmem(); for(let i = 0; i < 3; ++i) { let curval = Module.getValue(offset2 + i); Module.setValue(offset2 + i, curval + 20); } Module._print_inmem(); console.log('==============================='); function bytes_alloc(str) { let data = []; for(let i = 0; i < str.length; ++i) data[i] = str.charCodeAt(i); let offset = Module._malloc(str.length); Module.HEAP8.set(new Uint8Array(data), offset); return offset; } function bytes_dealloc(offset) { Module._free(offset); } let event = 'open'; let data = 'project'; let event_raw = bytes_alloc(event); let data_raw = bytes_alloc(data); Module._send_event(event_raw, event.length, data_raw, data.length); bytes_dealloc(event_raw); bytes_dealloc(data_raw);},  
+ 2212: function($0) {return $0 + 1;}
 };
 function call_alert(){ alert('hello world!'); throw 'all done'; }
 
@@ -4731,6 +4731,9 @@ var _get_inmem = Module["_get_inmem"] = createExportWrapper("get_inmem");
 
 /** @type {function(...*):?} */
 var _print_inmem = Module["_print_inmem"] = createExportWrapper("print_inmem");
+
+/** @type {function(...*):?} */
+var _send_event = Module["_send_event"] = createExportWrapper("send_event");
 
 /** @type {function(...*):?} */
 var ___em_js__call_alert = Module["___em_js__call_alert"] = createExportWrapper("__em_js__call_alert");

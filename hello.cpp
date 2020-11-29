@@ -2,8 +2,17 @@
 #include <math.h>
 #include <emscripten.h>
 #include <memory>
+#include <functional>
 
 using namespace std;
+
+string bytes_to_string(uint8_t* bytes, size_t size) {
+  string result;
+  for(int i = 0; i < size; ++i) {
+    result += static_cast<char>(bytes[i]);
+  }
+  return result;
+}
 
 extern "C" {
 
@@ -47,6 +56,21 @@ int daysInWeek() {
     cout << endl;
   }
 
+  void register_event_handler(const string& event, const function<void(uint8_t*,size_t)>&) {
+  
+  }
+  
+  void recv_event(uint8_t* bytes, size_t size) {
+    
+  }
+  
+  EMSCRIPTEN_KEEPALIVE
+  void send_event(uint8_t* event_bytes, size_t eventt_size, uint8_t* data_bytes, size_t data_size) {
+    string event = bytes_to_string(event_bytes, eventt);
+    string data = bytes_to_string(data_bytes, data_size);
+    cout << "event: " << event << " data: " << data << endl;
+  }
+
 } // extern "C"
 
 void my_calljs() {
@@ -79,8 +103,30 @@ int main() {
 	let curval = Module.getValue(offset2 + i);
 	Module.setValue(offset2 + i, curval + 20);
       }
-
       Module._print_inmem();
+      console.log('===============================');
+
+      function bytes_alloc(str) {
+	let data = [];
+	for(let i = 0; i < str.length; ++i)
+	  data[i] = str.charCodeAt(i);
+	let offset = Module._malloc(str.length);
+	Module.HEAP8.set(new Uint8Array(data), offset);
+	return offset;
+      }
+
+      function bytes_dealloc(offset) {
+	Module._free(offset);
+      }
+
+      let event = 'open';
+      let data = 'project';
+      let event_raw = bytes_alloc(event);
+      let data_raw = bytes_alloc(data);
+      Module._send_event(event_raw, event.length, data_raw, data.length);
+      bytes_dealloc(event_raw);
+      bytes_dealloc(data_raw);
+      
 	 //throw 'all done2';
     }, 100);
   int x = EM_ASM_INT({
