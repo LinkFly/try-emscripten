@@ -1,0 +1,31 @@
+#include <iostream>
+#include <math.h>
+#include <emscripten.h>
+
+using namespace std;
+
+extern "C" {
+
+int int_sqrt(int x) {
+  return sqrt(x);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void sayHi() {
+  cout << "Hi!" << endl;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int daysInWeek() {
+  return 7;
+}
+
+  void my_calljs() {
+    emscripten_run_script("debugger;alert('hi')");
+  }
+} // extern "C"
+
+int main() {
+  cout << "Hello!" << endl;
+  my_calljs();
+}
