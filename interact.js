@@ -1455,7 +1455,7 @@ function createExportWrapper(name, fixedasm) {
   };
 }
 
-var wasmBinaryFile = 'hello.wasm';
+var wasmBinaryFile = 'interact.wasm';
 if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
@@ -1592,10 +1592,9 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1110: function($0) {console.log('test-2 Value: ' + $0); var offset = Module._malloc(3); Module.HEAP8.set(new Uint8Array([1,2,3]), offset); Module._modify_array(offset, 3); var result = []; result[0] = Module.getValue(offset); result[1] = Module.getValue(offset + 1); result[2] = Module.getValue(offset + 2); console.log("modified array: ", result); Module._free(offset); var offset2 = Module._get_inmem(); for(let i = 0; i < 3; ++i) { let curval = Module.getValue(offset2 + i); Module.setValue(offset2 + i, curval + 20); } Module._print_inmem(); console.log('===============================');},  
- 1690: function($0) {return $0 + 1;}
+  1035: function() {function bytes_alloc(str) { let data = []; for(let i = 0; i < str.length; ++i) data[i] = str.charCodeAt(i); let offset = Module._malloc(str.length); Module.HEAP8.set(new Uint8Array(data), offset); return offset; } function bytes_dealloc(offset) { Module._free(offset); } let event = 'open'; let data = 'project'; let event_raw = bytes_alloc(event); let data_raw = bytes_alloc(data); Module._send_event(event_raw, event.length, data_raw, data.length); bytes_dealloc(event_raw); bytes_dealloc(data_raw);}
 };
-function call_alert(){ alert('hello world!'); throw 'all done'; }
+
 
 
 
@@ -1687,12 +1686,99 @@ function call_alert(){ alert('hello world!'); throw 'all done'; }
       return demangleAll(js);
     }
 
+  function ___assert_fail(condition, filename, line, func) {
+      abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
+    }
+
+  var ExceptionInfoAttrs={DESTRUCTOR_OFFSET:0,REFCOUNT_OFFSET:4,TYPE_OFFSET:8,CAUGHT_OFFSET:12,RETHROWN_OFFSET:13,SIZE:16};
+  function ___cxa_allocate_exception(size) {
+      // Thrown object is prepended by exception metadata block
+      return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
+    }
+
   function _atexit(func, arg) {
     }
   function ___cxa_atexit(a0,a1
   ) {
   return _atexit(a0,a1);
   }
+
+  function ExceptionInfo(excPtr) {
+      this.excPtr = excPtr;
+      this.ptr = excPtr - ExceptionInfoAttrs.SIZE;
+  
+      this.set_type = function(type) {
+        HEAP32[(((this.ptr)+(ExceptionInfoAttrs.TYPE_OFFSET))>>2)]=type;
+      };
+  
+      this.get_type = function() {
+        return HEAP32[(((this.ptr)+(ExceptionInfoAttrs.TYPE_OFFSET))>>2)];
+      };
+  
+      this.set_destructor = function(destructor) {
+        HEAP32[(((this.ptr)+(ExceptionInfoAttrs.DESTRUCTOR_OFFSET))>>2)]=destructor;
+      };
+  
+      this.get_destructor = function() {
+        return HEAP32[(((this.ptr)+(ExceptionInfoAttrs.DESTRUCTOR_OFFSET))>>2)];
+      };
+  
+      this.set_refcount = function(refcount) {
+        HEAP32[(((this.ptr)+(ExceptionInfoAttrs.REFCOUNT_OFFSET))>>2)]=refcount;
+      };
+  
+      this.set_caught = function (caught) {
+        caught = caught ? 1 : 0;
+        HEAP8[(((this.ptr)+(ExceptionInfoAttrs.CAUGHT_OFFSET))>>0)]=caught;
+      };
+  
+      this.get_caught = function () {
+        return HEAP8[(((this.ptr)+(ExceptionInfoAttrs.CAUGHT_OFFSET))>>0)] != 0;
+      };
+  
+      this.set_rethrown = function (rethrown) {
+        rethrown = rethrown ? 1 : 0;
+        HEAP8[(((this.ptr)+(ExceptionInfoAttrs.RETHROWN_OFFSET))>>0)]=rethrown;
+      };
+  
+      this.get_rethrown = function () {
+        return HEAP8[(((this.ptr)+(ExceptionInfoAttrs.RETHROWN_OFFSET))>>0)] != 0;
+      };
+  
+      // Initialize native structure fields. Should be called once after allocated.
+      this.init = function(type, destructor) {
+        this.set_type(type);
+        this.set_destructor(destructor);
+        this.set_refcount(0);
+        this.set_caught(false);
+        this.set_rethrown(false);
+      }
+  
+      this.add_ref = function() {
+        var value = HEAP32[(((this.ptr)+(ExceptionInfoAttrs.REFCOUNT_OFFSET))>>2)];
+        HEAP32[(((this.ptr)+(ExceptionInfoAttrs.REFCOUNT_OFFSET))>>2)]=value + 1;
+      };
+  
+      // Returns true if last reference released.
+      this.release_ref = function() {
+        var prev = HEAP32[(((this.ptr)+(ExceptionInfoAttrs.REFCOUNT_OFFSET))>>2)];
+        HEAP32[(((this.ptr)+(ExceptionInfoAttrs.REFCOUNT_OFFSET))>>2)]=prev - 1;
+        assert(prev > 0);
+        return prev === 1;
+      };
+    }
+  
+  var exceptionLast=0;
+  
+  var uncaughtExceptionCount=0;
+  function ___cxa_throw(ptr, type, destructor) {
+      var info = new ExceptionInfo(ptr);
+      // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
+      info.init(type, destructor);
+      exceptionLast = ptr;
+      uncaughtExceptionCount++;
+      throw ptr + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch.";
+    }
 
   function _abort() {
       abort();
@@ -1717,10 +1803,6 @@ function call_alert(){ alert('hello world!'); throw 'all done'; }
   function _emscripten_resize_heap(requestedSize) {
       requestedSize = requestedSize >>> 0;
       abortOnCannotGrowMemory(requestedSize);
-    }
-
-  function _emscripten_run_script(ptr) {
-      eval(UTF8ToString(ptr));
     }
 
   var ENV={};
@@ -4221,11 +4303,6 @@ function call_alert(){ alert('hello world!'); throw 'all done'; }
   }
   }
 
-  function _my_js() {
-  	console.log('hi from my_js');
-  	alert('hi from my_js');
-      }
-
   function _setTempRet0($i) {
       setTempRet0(($i) | 0);
     }
@@ -4692,13 +4769,14 @@ function intArrayToString(array) {
 
 __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 var asmLibraryArg = {
+  "__assert_fail": ___assert_fail,
+  "__cxa_allocate_exception": ___cxa_allocate_exception,
   "__cxa_atexit": ___cxa_atexit,
+  "__cxa_throw": ___cxa_throw,
   "abort": _abort,
-  "call_alert": call_alert,
   "emscripten_asm_const_int": _emscripten_asm_const_int,
   "emscripten_memcpy_big": _emscripten_memcpy_big,
   "emscripten_resize_heap": _emscripten_resize_heap,
-  "emscripten_run_script": _emscripten_run_script,
   "environ_get": _environ_get,
   "environ_sizes_get": _environ_sizes_get,
   "fd_close": _fd_close,
@@ -4706,7 +4784,6 @@ var asmLibraryArg = {
   "fd_seek": _fd_seek,
   "fd_write": _fd_write,
   "memory": wasmMemory,
-  "my_js": _my_js,
   "setTempRet0": _setTempRet0,
   "strftime_l": _strftime_l
 };
@@ -4715,25 +4792,7 @@ var asm = createWasm();
 var ___wasm_call_ctors = Module["___wasm_call_ctors"] = createExportWrapper("__wasm_call_ctors");
 
 /** @type {function(...*):?} */
-var _int_sqrt = Module["_int_sqrt"] = createExportWrapper("int_sqrt");
-
-/** @type {function(...*):?} */
-var _my_calljs = Module["_my_calljs"] = createExportWrapper("my_calljs");
-
-/** @type {function(...*):?} */
-var _daysInWeek = Module["_daysInWeek"] = createExportWrapper("daysInWeek");
-
-/** @type {function(...*):?} */
-var _modify_array = Module["_modify_array"] = createExportWrapper("modify_array");
-
-/** @type {function(...*):?} */
-var _get_inmem = Module["_get_inmem"] = createExportWrapper("get_inmem");
-
-/** @type {function(...*):?} */
-var _print_inmem = Module["_print_inmem"] = createExportWrapper("print_inmem");
-
-/** @type {function(...*):?} */
-var ___em_js__call_alert = Module["___em_js__call_alert"] = createExportWrapper("__em_js__call_alert");
+var _send_event = Module["_send_event"] = createExportWrapper("send_event");
 
 /** @type {function(...*):?} */
 var _main = Module["_main"] = createExportWrapper("main");
@@ -4767,6 +4826,9 @@ var _emscripten_stack_get_free = Module["_emscripten_stack_get_free"] = function
 var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function() {
   return (_emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
 };
+
+/** @type {function(...*):?} */
+var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
 
 /** @type {function(...*):?} */
 var _free = Module["_free"] = createExportWrapper("free");
