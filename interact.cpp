@@ -33,7 +33,8 @@ public:
   
   void register_callback(const string& event, const function<void(const string&)>& callback) {
     auto it = events_handlers.find(event);
-     assert(it != events_handlers.end());
+    if (it == events_handlers.end())
+      cerr << "Event `" << event << "` not found" << endl;
     events_handlers[event] = callback;
   }
 
