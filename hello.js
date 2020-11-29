@@ -660,13 +660,6 @@ function cwrap(ident, returnType, argTypes, opts) {
 
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-function _malloc() {
-  abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
-}
-function _free() {
-  // Show a helpful error since we used to include free by default in the past.
-  abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
-}
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
@@ -687,7 +680,7 @@ function allocate(slab, allocator) {
   if (allocator == ALLOC_STACK) {
     ret = stackAlloc(slab.length);
   } else {
-    ret = abort('malloc was not included, but is needed in allocate. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');;
+    ret = _malloc(slab.length);
   }
 
   if (slab.subarray || slab.slice) {
@@ -1032,7 +1025,7 @@ function lengthBytesUTF32(str) {
 // It is the responsibility of the caller to free() that memory.
 function allocateUTF8(str) {
   var size = lengthBytesUTF8(str) + 1;
-  var ret = abort('malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');;
+  var ret = _malloc(size);
   if (ret) stringToUTF8Array(str, HEAP8, ret, size);
   return ret;
 }
@@ -1599,8 +1592,8 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1112: function($0) {console.log('test-2 Value: ' + $0);},  
- 1154: function($0) {return $0 + 1;}
+  1114: function($0) {console.log('test-2 Value: ' + $0); var offset = Module._malloc(3); Module.HEAP8.set(new Uint8Array([1,2,3]), offset); Module._modify_array(offset, 3); var result = []; result[0] = Module.getValue(offset); result[1] = Module.getValue(offset + 1); result[2] = Module.getValue(offset + 2); console.log("modified array: ", result); Module._free(offset); var offset2 = Module._get_inmem(); for(let i = 0; i < 3; ++i) { let curval = Module.getValue(offset2 + i); Module.setValue(offset2 + i, curval + 21); } Module._print_inmem();},  
+ 1646: function($0) {return $0 + 1;}
 };
 function call_alert(){ alert('hello world!'); throw 'all done'; }
 
@@ -2048,7 +2041,7 @@ function call_alert(){ alert('hello world!'); throw 'all done'; }
   
   function mmapAlloc(size) {
       var alignedSize = alignMemory(size, 16384);
-      var ptr = abort('malloc was not included, but is needed in mmapAlloc. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');;
+      var ptr = _malloc(alignedSize);
       while (size < alignedSize) HEAP8[ptr + size++] = 0;
       return ptr;
     }
@@ -4731,6 +4724,15 @@ var _sayHi = Module["_sayHi"] = createExportWrapper("sayHi");
 var _daysInWeek = Module["_daysInWeek"] = createExportWrapper("daysInWeek");
 
 /** @type {function(...*):?} */
+var _modify_array = Module["_modify_array"] = createExportWrapper("modify_array");
+
+/** @type {function(...*):?} */
+var _get_inmem = Module["_get_inmem"] = createExportWrapper("get_inmem");
+
+/** @type {function(...*):?} */
+var _print_inmem = Module["_print_inmem"] = createExportWrapper("print_inmem");
+
+/** @type {function(...*):?} */
 var ___em_js__call_alert = Module["___em_js__call_alert"] = createExportWrapper("__em_js__call_alert");
 
 /** @type {function(...*):?} */
@@ -4767,6 +4769,12 @@ var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function()
 };
 
 /** @type {function(...*):?} */
+var _free = Module["_free"] = createExportWrapper("free");
+
+/** @type {function(...*):?} */
+var _malloc = Module["_malloc"] = createExportWrapper("malloc");
+
+/** @type {function(...*):?} */
 var dynCall_viijii = Module["dynCall_viijii"] = createExportWrapper("dynCall_viijii");
 
 /** @type {function(...*):?} */
@@ -4791,8 +4799,8 @@ if (!Object.getOwnPropertyDescriptor(Module, "intArrayFromString")) Module["intA
 if (!Object.getOwnPropertyDescriptor(Module, "intArrayToString")) Module["intArrayToString"] = function() { abort("'intArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 Module["ccall"] = ccall;
 Module["cwrap"] = cwrap;
-if (!Object.getOwnPropertyDescriptor(Module, "setValue")) Module["setValue"] = function() { abort("'setValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
-if (!Object.getOwnPropertyDescriptor(Module, "getValue")) Module["getValue"] = function() { abort("'getValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
+Module["setValue"] = setValue;
+Module["getValue"] = getValue;
 if (!Object.getOwnPropertyDescriptor(Module, "allocate")) Module["allocate"] = function() { abort("'allocate' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "UTF8ArrayToString")) Module["UTF8ArrayToString"] = function() { abort("'UTF8ArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "UTF8ToString")) Module["UTF8ToString"] = function() { abort("'UTF8ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
